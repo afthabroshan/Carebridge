@@ -27,15 +27,52 @@ class DatabaseHelper {
 
   Future<void> _createDB(Database db, int version) async {
     await db.execute('''
-      CREATE TABLE users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        email TEXT UNIQUE NOT NULL,
-        password TEXT NOT NULL,
-        age INTEGER NOT NULL,
-        diagnosis TEXT NOT NULL
-      )
-    ''');
+    CREATE TABLE users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      email TEXT UNIQUE NOT NULL,
+      password TEXT NOT NULL,
+      age INTEGER NOT NULL,
+      diagnosis TEXT NOT NULL,
+      speechTherapyScore INTEGER DEFAULT 0,
+      emotionTherapyScore INTEGER DEFAULT 0,
+      shapeMatchingScore INTEGER DEFAULT 0
+    )
+  ''');
+  }
+
+  Future<int> updateScore(int userId, String game, int newScore) async {
+    final db = await instance.database;
+    String columnName = "";
+
+    if (game == "Speech Therapy") {
+      columnName = "speechTherapyScore";
+    } else if (game == "Emotion Therapy") {
+      columnName = "emotionTherapyScore";
+    } else if (game == "Shape Matching") {
+      columnName = "shapeMatchingScore";
+    }
+
+    return await db.update(
+      'users',
+      {columnName: newScore},
+      where: 'id = ?',
+      whereArgs: [userId],
+    );
+  }
+
+  Future<Map<String, dynamic>?> getUserById(String userId) async {
+    final db = await database; // Ensure the database instance is available
+    List<Map<String, dynamic>> result = await db.query(
+      'users', // Your table name
+      where: 'id = ?', // Assuming 'uid' is your primary key
+      whereArgs: [userId],
+    );
+
+    if (result.isNotEmpty) {
+      return result.first; // Return the first matching user
+    }
+    return null; // Return null if no user is found
   }
 
   // Insert User (Sign Up)

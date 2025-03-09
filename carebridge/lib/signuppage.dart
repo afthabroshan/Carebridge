@@ -40,7 +40,8 @@ class _SignUpPageState extends State<SignUpPage> {
         email: email,
         password: password,
         age: age,
-        diagnosis: diagnosis);
+        diagnosis: diagnosis,
+        speechTherapyScore: 0);
     await DatabaseHelper.instance.insertUser(user);
 
     ScaffoldMessenger.of(context).showSnackBar(

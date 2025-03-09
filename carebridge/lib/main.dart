@@ -225,15 +225,67 @@
 //     );
 //   }
 // }
-import 'package:flutter/material.dart';
-import 'loginpage.dart';
-import 'signuppage.dart';
-import 'package:sqflite/sqflite.dart';
-// import 'package:sqflite_common_ffi/sqflite_common_ffi.dart';
+// import 'package:carebridge/homepage.dart';
+// import 'package:carebridge/usermodel.dart';
+// import 'package:flutter/material.dart';
+// import 'loginpage.dart';
+// import 'signuppage.dart';
+// import 'package:sqflite/sqflite.dart';
+// // import 'package:sqflite_common_ffi/sqflite_common_ffi.dart';
 
-void main() {
-  // sqfliteFfiInit();
-  // databaseFactory = databaseFactoryFfi;
+// void main() {
+//   // sqfliteFfiInit();
+//   // databaseFactory = databaseFactoryFfi;
+//   runApp(MyApp());
+// }
+
+// class MyApp extends StatelessWidget {
+//   @override
+//   Widget build(BuildContext context) {
+//     return MaterialApp(
+//       debugShowCheckedModeBanner: false,
+//       title: 'SQLite Auth',
+//       theme: ThemeData(
+//         primarySwatch: Colors.blue,
+//       ),
+//       home: HomePage(
+//           user: User(
+//               name: "af",
+//               email: "af",
+//               password: "af",
+//               age: 21,
+//               diagnosis: "pitha chori",
+//               score: 0)),
+//       // SignUpPage(), // Start with Sign Up page
+//     );
+//   }
+// }
+import 'package:carebridge/homepage.dart';
+import 'package:carebridge/signuppage.dart';
+import 'package:carebridge/usermodel.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:timezone/data/latest_all.dart' as tz;
+import 'package:timezone/timezone.dart' as tz;
+
+// Initialize Notifications Plugin
+final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+    FlutterLocalNotificationsPlugin();
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  tz.initializeTimeZones();
+
+  // Android Notification Settings
+  const AndroidInitializationSettings initializationSettingsAndroid =
+      AndroidInitializationSettings('@mipmap/ic_launcher');
+
+  const InitializationSettings initializationSettings =
+      InitializationSettings(android: initializationSettingsAndroid);
+
+  // Initialize Notifications
+  await flutterLocalNotificationsPlugin.initialize(initializationSettings);
+
   runApp(MyApp());
 }
 
@@ -246,7 +298,17 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: SignUpPage(), // Start with Sign Up page
+      home: SignUpPage(),
+      // home: HomePage(
+      //   user: User(
+      //     name: "af",
+      //     email: "af",
+      //     password: "af",
+      //     age: 21,
+      //     diagnosis: "amnesia",
+      //     speechTherapyScore: 0,
+      //   ),
+      // ),
     );
   }
 }
