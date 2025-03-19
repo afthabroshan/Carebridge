@@ -1,85 +1,64 @@
+import 'package:carebridge/forum_images.dart';
+import 'package:carebridge/game_monitor.dart';
+import 'package:carebridge/health_monitor.dart';
+import 'package:carebridge/shape_tracing.dart';
+import 'package:carebridge/userid.dart';
+import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:carebridge/Color_matching.dart';
 import 'package:carebridge/db_helper.dart';
 import 'package:carebridge/loginpage.dart';
 import 'package:carebridge/scheduler.dart';
 import 'package:carebridge/shape_matching.dart';
 import 'package:carebridge/speech_therapy.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter_local_notifications/src/flutter_local_notifications_plugin.dart';
-import 'usermodel.dart';
 import 'package:badges/badges.dart' as badges;
 
-class HomePage extends StatelessWidget {
-  final User user;
+class HomePage extends StatefulWidget {
+  const HomePage({super.key});
 
-  const HomePage({super.key, required this.user});
+  @override
+  _HomePageState createState() => _HomePageState();
+}
 
-  void speechtherapy(BuildContext context) async {
-    final int? newScore = await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const SpeechTherapy()),
-    );
+class _HomePageState extends State<HomePage> {
+  final loggedInUserId = UserSession().getUserId();
+  final supabase = Supabase.instance.client;
+  Map<String, dynamic>? userDetails;
 
-    if (newScore != null) {
-      user.speechTherapyScore += newScore; // Update the user's score
-    }
+  @override
+  void initState() {
+    super.initState();
+    fetchUserDetails();
   }
 
-  void emotiontherapy(BuildContext context) {
-    Navigator.push(
-        context, MaterialPageRoute(builder: (context) => ColorMatchingGame()));
-  }
-
-  void memoryandmatchinggames(BuildContext context) {
-    Navigator.push(
-        context,
-        MaterialPageRoute(
-            builder: (context) => ShapeMatchingGame(
-                  userId: 1,
-                )));
-  }
-
-  void dailyscheduler(BuildContext context) {
-    Navigator.push(
-        context, MaterialPageRoute(builder: (context) => DailySchedulerPage()));
+  Future<void> fetchUserDetails() async {
+    final response = await supabase
+        .from('user_details')
+        .select('*')
+        .eq('id', loggedInUserId!)
+        .maybeSingle();
+    setState(() {
+      userDetails = response;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.blueGrey.shade900,
       appBar: AppBar(
-        title: Text("Welcome ${user.name}"),
+        title: const Text(
+          "Welcome back to Care Bridge",
+          style: TextStyle(color: Colors.blueGrey),
+        ),
+        backgroundColor: Colors.blueGrey.shade900,
+        elevation: 0,
         actions: [
-          badges.Badge(
-            badgeContent: Text("1"),
-            child: IconButton(
-                onPressed: () {
-                  showDialog(
-                    context: context,
-                    builder: (context) {
-                      return AlertDialog(
-                        title: Text("You have 1 new notification"),
-                        content: Text(
-                            "Your score is only ${user.speechTherapyScore}, play more and achieve more."),
-                        actions: [
-                          TextButton(
-                            onPressed: () {
-                              Navigator.pop(context);
-                            },
-                            child: Text("Cancel"),
-                          ),
-                        ],
-                      );
-                    },
-                  );
-                },
-                icon: Icon(Icons.notifications)),
-          ),
           IconButton(
-            icon: Icon(Icons.logout),
+            icon: const Icon(Icons.logout),
             onPressed: () {
-              Navigator.pushReplacement(context,
-                  MaterialPageRoute(builder: (context) => LoginPage()));
+              Navigator.pushReplacement(
+                  context, MaterialPageRoute(builder: (context) => MyLogin()));
             },
           ),
         ],
@@ -88,29 +67,10 @@ class HomePage extends StatelessWidget {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            Container(
-              width: MediaQuery.of(context).size.width,
-              // color: Colors.brown,
-              decoration: BoxDecoration(
-                  color: Colors.grey,
-                  shape: BoxShape.rectangle,
-                  borderRadius: BorderRadius.all(Radius.circular(25))),
-              child: Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text("Name: ${user.name}", style: TextStyle(fontSize: 18)),
-                    Text("Email: ${user.email}",
-                        style: TextStyle(fontSize: 18)),
-                    Text("Age: ${user.age}", style: TextStyle(fontSize: 18)),
-                    Text("Diagnosis: ${user.diagnosis}",
-                        style: TextStyle(fontSize: 18)),
-                  ],
-                ),
-              ),
-            ),
-            SizedBox(height: 10),
+            userDetails == null
+                ? const CircularProgressIndicator()
+                : userInfoCard(userDetails!),
+            const SizedBox(height: 15),
             Expanded(
               child: GridView.count(
                 crossAxisCount: 2,
@@ -118,288 +78,53 @@ class HomePage extends StatelessWidget {
                 mainAxisSpacing: 10,
                 children: [
                   featureCard("Games", "assets/games.png", () {
-                    showModalBottomSheet(
-                      context: context,
-                      builder: (BuildContext context) {
-                        return Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: SingleChildScrollView(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  "Choose a Game",
-                                  style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold),
-                                ),
-                                SizedBox(height: 10),
-                                gameTile(
-                                  context,
-                                  "Speech Therapy",
-                                  // 10,
-                                  user.speechTherapyScore,
-                                  () => speechtherapy(context),
-                                ),
-                                gameTile(
-                                  context,
-                                  "Color Matching",
-                                  10,
-                                  // user.emotionTherapyScore,
-                                  () => emotiontherapy(context),
-                                ),
-                                // gameTile(
-                                //   context,
-                                //   "Emotion Therapy",
-                                //   user.emotionTherapyScore,
-                                //   () async {
-                                //     int newScore = await playGame("Emotion Therapy");
-                                //     await DatabaseHelper.instance.updateScore(user.id!, "Emotion Therapy", newScore);
-                                //     setState(() => user.emotionTherapyScore = newScore);
-                                //   },
-                                // ),
-                                gameTile(
-                                  context,
-                                  "Shape Matching",
-                                  1,
-                                  // user.shapeMatchingScore,
-                                  () => memoryandmatchinggames(context),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    );
+                    showGameSelection(context);
                   }),
                   featureCard("Daily Schedule", "assets/calendar.png", () {
-                    dailyscheduler(context);
+                    Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => DailySchedulerPage()));
                   }),
-                  featureCard("Growth Monitor", "assets/growth.png", () {}),
-                  featureCard("Community Forum", "assets/community.png", () {}),
+                  featureCard("Growth Monitor", "assets/growth.png", () {
+                    showGrowthMonitorSelection(context);
+                  }),
+                  featureCard("Community Forum", "assets/community.png", () {
+                    Navigator.push(context,
+                        MaterialPageRoute(builder: (context) => ForumImages()));
+                  }),
                 ],
               ),
             ),
-            // Row(
-            //   children: [
-            //     Container(
-            //       height: MediaQuery.of(context).size.width / 2 - 25,
-            //       width: MediaQuery.of(context).size.width / 2 - 25,
-            //       color: const Color.fromARGB(255, 132, 132, 132),
-            //       child: TextButton(
-            //           onPressed: () {
-            //             speechtherapy(context);
-            //           },
-            //           child: Text("Games")),
-            //     ),
-            //     SizedBox(
-            //       width: 10,
-            //     ),
-            //     Container(
-            //       height: MediaQuery.of(context).size.width / 2 - 25,
-            //       width: MediaQuery.of(context).size.width / 2 - 25,
-            //       color: const Color.fromARGB(255, 132, 132, 132),
-            //       child: TextButton(
-            //           onPressed: () {
-            //             speechtherapy(context);
-            //           },
-            //           child: Text("Daily Schedules")),
-            //     ),
-            //   ],
-            // ),
-            // SizedBox(height: 10),
-            // Row(
-            //   children: [
-            //     Container(
-            //       height: MediaQuery.of(context).size.width / 2 - 25,
-            //       width: MediaQuery.of(context).size.width / 2 - 25,
-            //       color: const Color.fromARGB(255, 132, 132, 132),
-            //       child: TextButton(
-            //           onPressed: () {
-            //             speechtherapy(context);
-            //           },
-            //           child: Text("Speech therapy")),
-            //     ),
-            //     SizedBox(
-            //       width: 10,
-            //     ),
-            //     Container(
-            //       height: MediaQuery.of(context).size.width / 2 - 25,
-            //       width: MediaQuery.of(context).size.width / 2 - 25,
-            //       color: const Color.fromARGB(255, 132, 132, 132),
-            //     ),
-            //   ],
-            // )
-            //     Container(
-            //       width: MediaQuery.of(context).size.width,
-            //       // color: Colors.brown,
-            //       decoration: BoxDecoration(
-            //           color: Colors.grey,
-            //           shape: BoxShape.rectangle,
-            //           borderRadius: BorderRadius.all(Radius.circular(25))),
-            //       child: Padding(
-            //         padding: const EdgeInsets.all(8.0),
-            //         child: Column(
-            //           children: [
-            //             Row(
-            //               children: [
-            //                 Text("Progress:"),
-            //                 SizedBox(width: 10),
-            //                 Expanded(
-            //                   child: LinearProgressIndicator(
-            //                     value: 0,
-            //                     // value: user.score / 100,
-            //                     color: Colors.black,
-            //                     // semanticsValue: "0",
-            //                   ),
-            //                 )
-            //               ],
-            //             ),
-            //             Text("0")
-            //           ],
-            //         ),
-            //       ),
-            //     ),
-            //     SizedBox(height: 10),
-            //     Container(
-            //       width: MediaQuery.of(context).size.width,
-            //       decoration: BoxDecoration(
-            //           color: Colors.lightBlue,
-            //           shape: BoxShape.rectangle,
-            //           borderRadius: BorderRadius.all(Radius.circular(25))),
-            //       // color: Colors.blueGrey,
-            //       child: Padding(
-            //         padding: const EdgeInsets.all(8.0),
-            //         child: Column(
-            //           children: [
-            //             Row(
-            //               children: [
-            //                 Text("Points:"),
-            //                 SizedBox(width: 10),
-            //                 Expanded(
-            //                   child: LinearProgressIndicator(
-            //                     value: user.score / 100,
-            //                     color: Colors.brown,
-            //                     backgroundColor: Colors.grey,
-            //                   ),
-            //                 ),
-            //               ],
-            //             ),
-            //             Text("${user.score}")
-            //           ],
-            //         ),
-            //       ),
-            //     ),
-            //     SizedBox(
-            //       height: 10,
-            //     ),
-            //     Container(
-            //         height: 100,
-            //         width: MediaQuery.of(context).size.width,
-            //         color: Colors.lightGreen,
-            //         child: Column(children: [
-            //           Text("Games"),
-            //           SizedBox(
-            //             height: 10,
-            //           ),
-            //           Row(
-            //             children: [
-            //               TextButton(
-            //                   onPressed: () {
-            //                     speechtherapy(context);
-            //                   },
-            //                   child: Text("Speech therapy")),
-            //               TextButton(
-            //                   onPressed: () {
-            //                     emotiontherapy(context);
-            //                   },
-            //                   child: Text("Emotion therapy")),
-            //               TextButton(
-            //                   onPressed: () {
-            //                     memoryandmatchinggames(context);
-            //                   },
-            //                   child: Text("Shape Matching")),
-            //             ],
-            //           ),
-            //         ])),
-            //     TextButton(
-            //         onPressed: () {
-            //           dailyscheduler(context);
-            //         },
-            //         child: Text("Daily scheduler")),
           ],
         ),
       ),
     );
   }
 
-  Widget gameTile(
-      BuildContext context, String gameName, int userId, Function onTap) {
-    return FutureBuilder<int>(
-      future: getGameScore(userId, gameName), // Fetch the latest score
-      builder: (context, snapshot) {
-        int score = snapshot.data ?? 0; // Use retrieved score or default to 0
-
-        return GestureDetector(
-          onTap: () => onTap(), // Call the game function when tapped
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black12,
-                  blurRadius: 6,
-                  spreadRadius: 2,
-                  offset: Offset(0, 3),
-                ),
-              ],
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  gameName,
-                  style: const TextStyle(
-                      fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                Row(
-                  children: [
-                    //   Text(
-                    //     "Score: $score",
-                    //     style: const TextStyle(
-                    //         fontSize: 16, fontWeight: FontWeight.w500),
-                    //   ),
-                    const SizedBox(width: 8),
-                    const Icon(Icons.arrow_forward_ios,
-                        size: 16, color: Colors.grey),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        );
-      },
+  Widget userInfoCard(Map<String, dynamic> user) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 500),
+      curve: Curves.easeInOut,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(colors: [Colors.blue, Colors.purple]),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(color: Colors.black26, blurRadius: 8, spreadRadius: 2),
+        ],
+      ),
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text("Name: ${user['name']}", style: cardTextStyle()),
+          Text("Email: ${user['email']}", style: cardTextStyle()),
+          Text("Age: ${user['age']}", style: cardTextStyle()),
+          Text("Diagnosis: ${user['diagnosis']}", style: cardTextStyle()),
+        ],
+      ),
     );
-  }
-
-// A function to retrieve the score dynamically
-  Future<int> getGameScore(int userId, String game) async {
-    // final dbHelper = DatabaseHelper.instance;
-    // final user = await dbHelper.getUser(); // Fetch user data
-
-    // if (user == null) return 0; // Return 0 if no user found
-
-    if (game == "Speech Therapy") {
-      return user.speechTherapyScore;
-    } else if (game == "Emotion Therapy") {
-      return user.emotionTherapyScore;
-    } else if (game == "Shape Matching") {
-      return user.shapeMatchingScore;
-    }
-    return 0; // Default case
   }
 
   Widget featureCard(String title, String iconPath, VoidCallback onTap) {
@@ -407,13 +132,17 @@ class HomePage extends StatelessWidget {
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.grey.shade200,
+          gradient: LinearGradient(
+            colors: [Colors.blueAccent.shade100, Colors.blueAccent.shade400],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
           borderRadius: BorderRadius.circular(15),
           boxShadow: [
             BoxShadow(
-              color: Colors.black12,
-              blurRadius: 4,
-              offset: Offset(2, 2),
+              color: Colors.black26,
+              blurRadius: 6,
+              offset: Offset(2, 4),
             ),
           ],
         ),
@@ -424,11 +153,112 @@ class HomePage extends StatelessWidget {
             const SizedBox(height: 10),
             Text(
               title,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.white, // Ensure text is visible
+              ),
             ),
           ],
         ),
       ),
     );
+  }
+
+  Widget gameTile(String gameName, Function onTap) {
+    return ListTile(
+      title: Text(gameName, style: cardTextStyle()),
+      trailing: const Icon(Icons.arrow_forward_ios, color: Colors.white),
+      onTap: () => onTap(),
+    );
+  }
+
+  void showGameSelection(BuildContext context) {
+    showModalBottomSheet(
+      backgroundColor: Colors.blueGrey.shade800,
+      context: context,
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text("Choose a Game", style: cardTextStyle()),
+              const SizedBox(height: 10),
+              gameTile("Language", () => navigateToGame(SpeechTherapy())),
+              gameTile("Cognitive", () => handleCognitiveSelection(context)),
+              gameTile("Sensory", () => navigateToGame(ShapeTracingGame())),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  /// Handles Cognitive Selection based on User Preference
+  void handleCognitiveSelection(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("Choose Your Cognitive Game"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                title: const Text("Color Matching"),
+                onTap: () {
+                  Navigator.pop(context); // Close the dialog
+                  navigateToGame(ColorMatchingGame());
+                },
+              ),
+              ListTile(
+                title: const Text("Shape Matching"),
+                onTap: () {
+                  Navigator.pop(context); // Close the dialog
+                  navigateToGame(ShapeMatchingGame());
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void showGrowthMonitorSelection(BuildContext context) {
+    showModalBottomSheet(
+      backgroundColor: Colors.blueGrey.shade800,
+      context: context,
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text("Choose the Growth Monitor", style: cardTextStyle()),
+              const SizedBox(height: 10),
+              gameTile("Health Monitoring",
+                  () => navigateToMonitor(HealthMonitor())),
+              gameTile(
+                  "Games Monitoring", () => navigateToMonitor(GameMonitor())),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void navigateToMonitor(Widget montior) {
+    Navigator.push(context, MaterialPageRoute(builder: (context) => montior));
+  }
+
+  void navigateToGame(Widget game) {
+    Navigator.push(context, MaterialPageRoute(builder: (context) => game));
+  }
+
+  TextStyle cardTextStyle() {
+    return const TextStyle(
+        color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold);
   }
 }
